@@ -1,0 +1,421 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>男聲練唱室</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one-screen studio console — top status bar, tab rail, one tool panel at a time. */
+:root{
+  --bg:#f6f3ec; --panel:#fffdf8; --fg:#1d1a16; --muted:#6b645a; --line:#e3ddd0;
+  --accent:#c2641a; --accent-fg:#fff; --good:#2f8f5b; --warn:#c9a227; --bad:#c0392b;
+  --meter:#ece6da;
+  --font-display:"Noto Serif TC","Songti TC",serif;
+  --font-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --font-mono:"JetBrains Mono","SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#14120f; --panel:#1e1b17; --fg:#f1ece3; --muted:#a39a8c; --line:#302b25;
+  --accent:#e8903a; --accent-fg:#1a120a; --good:#4fc47f; --warn:#e3c34a; --bad:#e2574a;
+  --meter:#2a2520; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#14120f; --panel:#1e1b17; --fg:#f1ece3; --muted:#a39a8c; --line:#302b25;
+  --accent:#e8903a; --accent-fg:#1a120a; --good:#4fc47f; --warn:#e3c34a; --bad:#e2574a;
+  --meter:#2a2520; color-scheme:dark }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 32px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--font-display);font-size:1.5rem;margin:0;text-wrap:balance}
+.sub{color:var(--muted);font-size:.85rem}
+.mic{font-size:.8rem;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--meter);color:var(--muted)}
+.mic .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.mic.on{color:var(--good)} .mic.on .dot{background:var(--good)}
+nav{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+nav button{flex:0 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:8px 14px;border-radius:999px;font:inherit;font-size:.9rem;cursor:pointer}
+nav button[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+section.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+h2{font-family:var(--font-display);font-size:1.15rem;margin:0}
+p{margin:0}
+.hint{color:var(--muted);font-size:.85rem}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button.b{font:inherit;font-size:.92rem;padding:9px 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+button.b.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+button.b:focus-visible,nav button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.b[disabled]{opacity:.45;cursor:default}
+select,input[type=number]{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+.big{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:700;font-size:3rem;line-height:1;text-align:center}
+.big small{font-size:1rem;color:var(--muted);font-weight:500;display:block;margin-top:6px;font-family:var(--font-body)}
+.gauge{position:relative;height:38px;background:var(--meter);border-radius:8px;overflow:hidden}
+.gauge .zone{position:absolute;top:0;bottom:0;left:40%;width:20%;background:color-mix(in srgb,var(--good) 25%,transparent)}
+.gauge .mid{position:absolute;top:0;bottom:0;left:50%;width:2px;background:var(--fg);opacity:.5}
+.gauge .needle{position:absolute;top:4px;bottom:4px;width:6px;margin-left:-3px;border-radius:3px;background:var(--accent);left:50%;transition:left .08s linear}
+.gauge .needle.ok{background:var(--good)} .gauge .needle.off{background:var(--bad)}
+.gauge .lab{position:absolute;top:0;bottom:0;display:flex;align-items:center;font-size:.72rem;color:var(--muted);font-family:var(--font-mono)}
+.gauge .lab.l{left:8px}.gauge .lab.r{right:8px}
+.keys{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px}
+.keys button{font:inherit;font-family:var(--font-mono);font-size:.85rem;padding:10px 4px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+.keys button.active{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.keys button.mark-easy{box-shadow:inset 0 -4px 0 var(--good)}
+.keys button.mark-hard{box-shadow:inset 0 -4px 0 var(--warn)}
+.keys button.mark-break{box-shadow:inset 0 -4px 0 var(--bad)}
+.stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+.stat b{display:block;font-family:var(--font-mono);font-size:1.3rem;font-variant-numeric:tabular-nums}
+.stat span{font-size:.78rem;color:var(--muted)}
+.bar{height:10px;background:var(--meter);border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .1s linear}
+.breath{font-family:var(--font-display);font-size:2rem;text-align:center;min-height:2.4em}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:.78rem;letter-spacing:.04em}
+td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.stage{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.stage summary{padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;font-weight:600;list-style:none}
+.stage summary::-webkit-details-marker{display:none}
+.stage summary .prog{font-family:var(--font-mono);font-weight:500;color:var(--muted);font-size:.85rem}
+.stage .goal{padding:0 14px 8px;color:var(--muted);font-size:.85rem}
+.song{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.song input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.song .t{min-width:0}.song .t b{font-weight:600}.song .t small{display:block;color:var(--muted);font-size:.78rem}
+.song .k{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:.85rem}
+.song .k button{width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer;font:inherit}
+.song.done .t b{color:var(--muted);text-decoration:line-through}
+.log{font-family:var(--font-mono);font-size:.8rem;color:var(--muted);max-height:120px;overflow:auto}
+.notice{border-left:3px solid var(--warn);padding:8px 12px;background:var(--meter);border-radius:0 8px 8px 0;font-size:.85rem}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;background:var(--meter);color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <div><h1>男聲練唱室</h1><div class="sub">中階男聲・音準、音域、高音、氣息、歌單進度</div></div>
+  <span class="mic" id="micState"><span class="dot"></span><span id="micText">麥克風：未啟動</span></span>
+</header>
+
+<nav role="tablist" id="tabs">
+  <button role="tab" data-tab="pitch" aria-selected="true">音準</button>
+  <button role="tab" data-tab="range">音域測試</button>
+  <button role="tab" data-tab="high">高音階梯</button>
+  <button role="tab" data-tab="breath">氣息</button>
+  <button role="tab" data-tab="plan">歌單進度</button>
+</nav>
+
+<div id="micNotice" class="notice" hidden></div>
+
+<!-- 音準 -->
+<section class="panel" data-panel="pitch">
+  <h2>音準校正</h2>
+  <p class="hint">按下目標音聽參考音，再跟著唱。偏差在 ±20 音分內算準。沒有麥克風時，仍可當作練耳與跟唱。</p>
+  <div class="row">
+    <button class="b primary" id="micBtn">啟動麥克風</button>
+    <button class="b" id="playRef">▶ 播放參考音</button>
+    <label class="hint">音色 <select id="wave"><option value="sine">柔和</option><option value="triangle">清亮</option></select></label>
+  </div>
+  <div class="keys" id="pitchKeys"></div>
+  <div class="big" id="detNote">—<small id="detFreq">唱出聲音後顯示偵測到的音</small></div>
+  <div class="gauge"><div class="zone"></div><div class="mid"></div><div class="needle" id="needle"></div><span class="lab l">−50¢ 偏低</span><span class="lab r">偏高 +50¢</span></div>
+  <div class="stat">
+    <div><b id="stHold">0.0s</b><span>連續穩定秒數（±20¢）</span></div>
+    <div><b id="stBest">0.0s</b><span>本次最長穩定</span></div>
+    <div><b id="stAvg">—</b><span>平均偏差</span></div>
+  </div>
+</section>
+
+<!-- 音域 -->
+<section class="panel" data-panel="range" hidden>
+  <h2>音域與換聲點測試</h2>
+  <p class="hint">從 C3 開始一個半音一個半音往上唱。每個音標記：<span class="pill">舒適</span> 唱得輕鬆、<span class="pill">勉強</span> 需要用力或音色變、<span class="pill">破音</span> 上不去。第一個「勉強」通常就是你的換聲點。</p>
+  <div class="row">
+    <button class="b primary" id="rangePlay">▶ 播放目前音</button>
+    <button class="b" id="rangeNext">下一個半音 →</button>
+    <button class="b" id="rangeReset">重測</button>
+  </div>
+  <div class="big" id="rangeNote">C3<small id="rangeDet">有麥克風時，這裡會顯示你唱到的音</small></div>
+  <div class="row">
+    <button class="b" data-mark="easy" style="border-color:var(--good)">舒適</button>
+    <button class="b" data-mark="hard" style="border-color:var(--warn)">勉強</button>
+    <button class="b" data-mark="break" style="border-color:var(--bad)">破音</button>
+  </div>
+  <div class="keys" id="rangeKeys"></div>
+  <div class="stat">
+    <div><b id="rComfort">—</b><span>舒適上限</span></div>
+    <div><b id="rBreak">—</b><span>換聲點（第一個勉強）</span></div>
+    <div><b id="rMax">—</b><span>極限高音</span></div>
+  </div>
+  <p class="hint" id="rangeAdvice">測完後這裡會告訴你該從歌單哪一階段開始，以及選歌時怎麼降 key。</p>
+</section>
+
+<!-- 高音 -->
+<section class="panel" data-panel="high" hidden>
+  <h2>高音階梯</h2>
+  <p class="hint">用氣息托住、喉頭放鬆，跟著琴音做練習。每輪結束自動升半音，覺得擠就停，不要硬頂。目標：F4 穩 → G4 連續 → G♯4 → A4。</p>
+  <div class="row">
+    <label class="hint">練習 <select id="exType">
+      <option value="siren">滑音（do→sol→do）練換聲</option>
+      <option value="arp">琶音 1-3-5-8-5-3-1 練混聲</option>
+      <option value="five">五度音階上下行 練連續咬字</option>
+      <option value="hold">頂音長音 4 秒 練 G4 拖長</option>
+    </select></label>
+    <label class="hint">起始 <select id="exStart"></select></label>
+    <label class="hint">母音 <select id="exVowel"><option>ㄚ a</option><option>ㄨ u</option><option>ㄧ i</option><option>ㄝ e</option><option>ㄛ o</option></select></label>
+  </div>
+  <div class="row">
+    <button class="b primary" id="exPlay">▶ 開始一輪</button>
+    <button class="b" id="exUp">升半音 ♯</button>
+    <button class="b" id="exDown">降半音 ♭</button>
+    <button class="b" id="exStop">停止</button>
+  </div>
+  <div class="big" id="exTop">G4<small id="exInfo">本輪最高音</small></div>
+  <div class="bar"><i id="exBar"></i></div>
+  <div class="stat">
+    <div><b id="exRounds">0</b><span>今天完成輪數</span></div>
+    <div><b id="exPeak">—</b><span>今天最高完成音</span></div>
+    <div><b id="exMatch">—</b><span>頂音命中（有麥克風）</span></div>
+  </div>
+  <div class="log" id="exLog"></div>
+</section>
+
+<!-- 氣息 -->
+<section class="panel" data-panel="breath" hidden>
+  <h2>氣息控制</h2>
+  <p class="hint">長句唱不完、副歌越唱越虛，多半是氣息分配。兩種練習交替做，每天 5 分鐘。</p>
+  <div class="row">
+    <label class="hint">模式 <select id="brMode">
+      <option value="4-4-8">吸 4 秒・停 4・吐「嘶」8 秒</option>
+      <option value="4-4-16">吸 4・停 4・吐 16 秒</option>
+      <option value="4-4-24">吸 4・停 4・吐 24 秒（進階）</option>
+      <option value="tone">長音：唱一個音越久越好（有麥克風會計時）</option>
+    </select></label>
+    <button class="b primary" id="brStart">開始</button>
+    <button class="b" id="brStop">停止</button>
+  </div>
+  <div class="breath" id="brText">準備好就按開始</div>
+  <div class="bar"><i id="brBar"></i></div>
+  <div class="stat">
+    <div><b id="brCount">0</b><span>本次完成循環</span></div>
+    <div><b id="brTone">0.0s</b><span>長音持續</span></div>
+    <div><b id="brToneBest">0.0s</b><span>長音最佳紀錄</span></div>
+  </div>
+  <p class="hint">吐氣要均勻、發出細而穩定的「嘶」聲，氣聲忽大忽小就是在用喉嚨控制而不是橫膈膜。長音練習建議唱 E4 或 F4，先直音後加顫音。</p>
+</section>
+
+<!-- 歌單 -->
+<section class="panel" data-panel="plan" hidden>
+  <h2>12–16 週練習路線</h2>
+  <p class="hint">每首至少唱 10 次再打勾。右側記錄你目前唱這首歌的 key 升降（0 = 原調），唱穩後每週回升半音。</p>
+  <div id="stages"></div>
+  <p class="hint">最高音多為網友標註，非官方樂譜；以「唱完不累、不沙啞」為最終準則。</p>
+</section>
+</div>
+
+<script>
+(function(){
+'use strict';
+const NAMES=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+const midiName=m=>NAMES[m%12]+(Math.floor(m/12)-1);
+const midiFreq=m=>440*Math.pow(2,(m-69)/12);
+const nameMidi={}; for(let m=36;m<96;m++) nameMidi[midiName(m)]=m;
+const LS={get(k,d){try{const v=localStorage.getItem('vt_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('vt_'+k,JSON.stringify(v))}catch(e){}}};
+const $=id=>document.getElementById(id);
+
+/* ---------- tabs ---------- */
+const tabs=$('tabs');
+function showTab(name){
+  tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===name)));
+  document.querySelectorAll('[data-panel]').forEach(p=>p.hidden=p.dataset.panel!==name);
+  LS.set('tab',name);
+}
+tabs.addEventListener('click',e=>{const b=e.target.closest('button');if(b)showTab(b.dataset.tab)});
+const startTab=(location.hash||'').slice(1); showTab(['pitch','range','high','breath','plan'].includes(startTab)?startTab:LS.get('tab','pitch'));
+
+/* ---------- audio out ---------- */
+let ctx=null;
+function ac(){ if(!ctx) ctx=new (window.AudioContext||window.webkitAudioContext)(); if(ctx.state==='suspended') ctx.resume(); return ctx; }
+let playing=[];
+function tone(midi,dur,at,wave){
+  const c=ac(); const o=c.createOscillator(); const g=c.createGain();
+  o.type=wave||$('wave').value; o.frequency.value=midiFreq(midi);
+  const t=c.currentTime+(at||0);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.25,t+.03); g.gain.setValueAtTime(.25,t+dur-.06); g.gain.linearRampToValueAtTime(0,t+dur);
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t+dur+.02); playing.push(o); return o;
+}
+function glide(m1,m2,dur,at){
+  const c=ac(); const o=c.createOscillator(); const g=c.createGain(); o.type=$('wave').value;
+  const t=c.currentTime+(at||0);
+  o.frequency.setValueAtTime(midiFreq(m1),t); o.frequency.exponentialRampToValueAtTime(midiFreq(m2),t+dur);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.25,t+.04); g.gain.setValueAtTime(.25,t+dur-.06); g.gain.linearRampToValueAtTime(0,t+dur);
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t+dur+.02); playing.push(o);
+}
+function stopAll(){ playing.forEach(o=>{try{o.stop()}catch(e){}}); playing=[]; }
+
+/* ---------- mic + pitch detection ---------- */
+let analyser=null, buf=null, micOn=false, rafId=null;
+let detected=null; // {midi, cents, freq}
+const micNotice=$('micNotice');
+function setMic(on,text){ micOn=on; $('micState').classList.toggle('on',on); $('micText').textContent='麥克風：'+text; }
+async function startMic(){
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw new Error('nomd');
+    const s=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    const c=ac(); const src=c.createMediaStreamSource(s); analyser=c.createAnalyser(); analyser.fftSize=2048; buf=new Float32Array(analyser.fftSize); src.connect(analyser);
+    setMic(true,'偵測中'); $('micBtn').textContent='麥克風已啟動'; $('micBtn').disabled=true; micNotice.hidden=true; loop();
+  }catch(e){
+    setMic(false,'無法使用');
+    micNotice.hidden=false;
+    micNotice.textContent='這個檢視環境不開放麥克風，所以暫時沒有即時音準偵測。參考音、音域標記、高音階梯、氣息計時與歌單都能照常用；如果需要即時偵測，請在一般瀏覽器（Chrome／Safari）開啟同一頁並允許麥克風。';
+  }
+}
+$('micBtn').addEventListener('click',startMic);
+function detectPitch(b,sr){
+  let rms=0; for(let i=0;i<b.length;i++) rms+=b[i]*b[i]; rms=Math.sqrt(rms/b.length); if(rms<0.012) return -1;
+  const N=b.length; const c=new Float32Array(N);
+  for(let lag=0;lag<N;lag++){ let s=0; for(let i=0;i<N-lag;i++) s+=b[i]*b[i+lag]; c[lag]=s; }
+  let d=0; while(d<N-1&&c[d]>c[d+1]) d++;
+  let max=-1,pos=-1; for(let i=d;i<N;i++){ if(c[i]>max){max=c[i];pos=i} }
+  if(pos<=0) return -1;
+  const y1=c[pos-1]||0,y2=c[pos],y3=c[pos+1]||0; const a=(y1+y3-2*y2)/2,bb=(y3-y1)/2; const shift=a?-bb/(2*a):0;
+  const f=sr/(pos+shift); return (f>60&&f<1200)?f:-1;
+}
+let smooth=[];
+function loop(){
+  rafId=requestAnimationFrame(loop);
+  analyser.getFloatTimeDomainData(buf);
+  const f=detectPitch(buf,ctx.sampleRate);
+  if(f<0){ detected=null; smooth=[]; onDetect(null); return; }
+  smooth.push(f); if(smooth.length>4) smooth.shift();
+  const fs=smooth.slice().sort((a,b)=>a-b)[Math.floor(smooth.length/2)];
+  const m=69+12*Math.log2(fs/440); const mr=Math.round(m); detected={midi:mr,cents:Math.round((m-mr)*100),freq:fs};
+  onDetect(detected);
+}
+
+/* ---------- pitch panel ---------- */
+let target=nameMidi['E4']; const pk=$('pitchKeys');
+for(let m=nameMidi['C3'];m<=nameMidi['C5'];m++){ const b=document.createElement('button'); b.textContent=midiName(m); b.dataset.m=m; pk.appendChild(b); }
+function setTarget(m){ target=m; pk.querySelectorAll('button').forEach(b=>b.classList.toggle('active',+b.dataset.m===m)); }
+setTarget(target);
+pk.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;setTarget(+b.dataset.m);tone(target,1.2)});
+$('playRef').addEventListener('click',()=>tone(target,1.5));
+let hold=0,best=0,lastT=0,devs=[];
+function onDetect(d){
+  const now=performance.now();
+  if(!d){ $('detNote').firstChild.textContent='—'; $('detFreq').textContent='唱出聲音後顯示偵測到的音'; $('needle').style.left='50%'; $('needle').className='needle'; hold=0; $('stHold').textContent='0.0s'; lastT=now; rangeDetect(null); toneDetect(null,now); exDetect(null); return; }
+  $('detNote').firstChild.textContent=midiName(d.midi); $('detFreq').textContent=d.freq.toFixed(1)+' Hz';
+  const diff=(d.midi-target)*100+d.cents; const clamped=Math.max(-50,Math.min(50,diff));
+  $('needle').style.left=(50+clamped)+'%'; const ok=Math.abs(diff)<=20; $('needle').className='needle '+(ok?'ok':(Math.abs(diff)>50?'off':''));
+  const dt=(now-lastT)/1000; lastT=now;
+  if(ok){ hold+=dt; best=Math.max(best,hold); devs.push(Math.abs(diff)); if(devs.length>200)devs.shift(); } else hold=0;
+  $('stHold').textContent=hold.toFixed(1)+'s'; $('stBest').textContent=best.toFixed(1)+'s';
+  if(devs.length) $('stAvg').textContent=Math.round(devs.reduce((a,b)=>a+b,0)/devs.length)+'¢';
+  rangeDetect(d); toneDetect(d,now); exDetect(d);
+}
+
+/* ---------- range panel ---------- */
+const RLO=nameMidi['C3'],RHI=nameMidi['D5']; let rCur=LS.get('rangeCur',RLO); let rMarks=LS.get('rangeMarks',{});
+const rk=$('rangeKeys'); for(let m=RLO;m<=RHI;m++){const b=document.createElement('button');b.textContent=midiName(m);b.dataset.m=m;rk.appendChild(b)}
+rk.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;rCur=+b.dataset.m;renderRange();tone(rCur,1.2)});
+const label={easy:'舒適',hard:'勉強',break:'破音'};
+function renderRange(){
+  $('rangeNote').firstChild.textContent=midiName(rCur);
+  rk.querySelectorAll('button').forEach(b=>{const m=+b.dataset.m;b.className=(m===rCur?'active ':'')+(rMarks[m]?'mark-'+rMarks[m]:'')});
+  const ms=Object.keys(rMarks).map(Number).sort((a,b)=>a-b);
+  const easy=ms.filter(m=>rMarks[m]==='easy'),hard=ms.filter(m=>rMarks[m]==='hard'),sung=ms.filter(m=>rMarks[m]!=='break');
+  const comfort=easy.length?Math.max(...easy):null, brk=hard.length?Math.min(...hard):null, mx=sung.length?Math.max(...sung):null;
+  $('rComfort').textContent=comfort?midiName(comfort):'—'; $('rBreak').textContent=brk?midiName(brk):'—'; $('rMax').textContent=mx?midiName(mx):'—';
+  let adv='';
+  if(comfort){
+    const G4=nameMidi['G4'],F4=nameMidi['F4'],Gs4=nameMidi['G♯4'];
+    if(comfort<F4) adv='舒適上限在 F4 以下：從階段 1（十年、稻香、吻別）開始，先把音準和氣息練穩。';
+    else if(comfort<G4) adv='F4 穩了：進入階段 2–3，用信仰、凍結練耐力，再用江南、你是我的眼攻 G4。';
+    else if(comfort<Gs4) adv='G4 已經舒適：主力放在階段 4（突然好想你、倔強、告白氣球、唯一）練 G♯4 連續咬字。';
+    else adv='G♯4 以上都舒適：可以開始階段 5（晴天、翅膀、楓），仍建議先降 1–2 key 唱穩再升回。';
+    adv+=' 選歌時：歌曲最高音比舒適上限高幾個半音，就先降幾個 key。';
+  }
+  $('rangeAdvice').textContent=adv||'測完後這裡會告訴你該從歌單哪一階段開始，以及選歌時怎麼降 key。';
+  LS.set('rangeCur',rCur); LS.set('rangeMarks',rMarks);
+}
+function rangeDetect(d){ $('rangeDet').textContent=d?('偵測到 '+midiName(d.midi)+(d.cents>=0?' +':' ')+d.cents+'¢'):(micOn?'唱出聲音後顯示':'有麥克風時，這裡會顯示你唱到的音'); }
+$('rangePlay').addEventListener('click',()=>tone(rCur,1.5));
+$('rangeNext').addEventListener('click',()=>{if(rCur<RHI)rCur++;renderRange();tone(rCur,1.2)});
+$('rangeReset').addEventListener('click',()=>{rMarks={};rCur=RLO;renderRange()});
+document.querySelectorAll('[data-mark]').forEach(b=>b.addEventListener('click',()=>{rMarks[rCur]=b.dataset.mark;if(b.dataset.mark!=='break'&&rCur<RHI){rCur++;renderRange();tone(rCur,1.2)}else renderRange()}));
+renderRange();
+
+/* ---------- high-note ladder ---------- */
+const exStart=$('exStart'); for(let m=nameMidi['C3'];m<=nameMidi['A4'];m++){const o=document.createElement('option');o.value=m;o.textContent=midiName(m);exStart.appendChild(o)}
+exStart.value=LS.get('exStart',nameMidi['C4']);
+let exTimer=null, exRounds=0, exPeakM=null, exTopM=null, exHits=0, exSamples=0, exTopWindow=null;
+const today=new Date().toISOString().slice(0,10); const exSaved=LS.get('exDay',{}); if(exSaved.d===today){exRounds=exSaved.r||0;exPeakM=exSaved.p||null;}
+function exPattern(type,s){
+  switch(type){
+    case 'siren': return {top:s+7,steps:[{g:[s,s+7],d:1.2},{g:[s+7,s],d:1.2}]};
+    case 'arp': return {top:s+12,steps:[s,s+4,s+7,s+12,s+7,s+4,s].map(m=>({n:m,d:.45}))};
+    case 'five': return {top:s+7,steps:[s,s+2,s+4,s+5,s+7,s+5,s+4,s+2,s].map(m=>({n:m,d:.4}))};
+    case 'hold': return {top:s+7,steps:[{n:s,d:.5},{n:s+4,d:.5},{n:s+7,d:4,hold:true}]};
+  }
+}
+function exRender(){ const s=+exStart.value; const p=exPattern($('exType').value,s); exTopM=p.top; $('exTop').firstChild.textContent=midiName(p.top); $('exInfo').textContent='本輪最高音・起始 '+midiName(s)+'・用母音「'+$('exVowel').value.split(' ')[0]+'」'; $('exRounds').textContent=exRounds; $('exPeak').textContent=exPeakM?midiName(exPeakM):'—'; LS.set('exStart',s); }
+exStart.addEventListener('change',exRender); $('exType').addEventListener('change',exRender); $('exVowel').addEventListener('change',exRender);
+function exRun(){
+  stopAll(); clearTimeout(exTimer); const s=+exStart.value; const p=exPattern($('exType').value,s); let t=0; exHits=0; exSamples=0;
+  p.steps.forEach(st=>{ if(st.g) glide(st.g[0],st.g[1],st.d,t); else tone(st.n,st.d,t); if(st.hold||st.n===p.top||(st.g&&st.g[1]===p.top)) exTopWindow={from:t,to:t+st.d}; t+=st.d; });
+  const total=t; const t0=performance.now(); $('exBar').style.width='0%';
+  (function tick(){ const el=(performance.now()-t0)/1000; $('exBar').style.width=Math.min(100,el/total*100)+'%'; if(el<total){ exTimer=setTimeout(tick,60);} else { exRounds++; exPeakM=Math.max(exPeakM||0,p.top); LS.set('exDay',{d:today,r:exRounds,p:exPeakM}); const hit=exSamples?Math.round(exHits/exSamples*100)+'%':'—'; $('exMatch').textContent=hit; const line=document.createElement('div'); line.textContent=new Date().toTimeString().slice(0,5)+'  '+midiName(s)+' → '+midiName(p.top)+(exSamples?'  頂音命中 '+hit:''); $('exLog').prepend(line); exStart.value=Math.min(nameMidi['A4'],s+1); exRender(); exTopWindow=null; } })();
+  exRunStart=t0;
+}
+let exRunStart=0;
+function exDetect(d){ if(!exTopWindow||!exTopM) return; const el=(performance.now()-exRunStart)/1000; if(el<exTopWindow.from||el>exTopWindow.to) return; exSamples++; if(d&&Math.abs((d.midi-exTopM)*100+d.cents)<=35) exHits++; }
+$('exPlay').addEventListener('click',exRun);
+$('exUp').addEventListener('click',()=>{exStart.value=Math.min(nameMidi['A4'],+exStart.value+1);exRender()});
+$('exDown').addEventListener('click',()=>{exStart.value=Math.max(nameMidi['C3'],+exStart.value-1);exRender()});
+$('exStop').addEventListener('click',()=>{stopAll();clearTimeout(exTimer);$('exBar').style.width='0%'});
+exRender();
+
+/* ---------- breath ---------- */
+let brTimer=null, brCycles=0, toneStart=null, toneBest=LS.get('toneBest',0), toneCur=0;
+$('brToneBest').textContent=toneBest.toFixed(1)+'s';
+function brStop(){ clearTimeout(brTimer); brTimer=null; $('brText').textContent='已停止'; $('brBar').style.width='0%'; }
+function brRun(){
+  brStop(); brCycles=0; $('brCount').textContent='0'; const mode=$('brMode').value;
+  if(mode==='tone'){ $('brText').textContent=micOn?'唱一個音，放開就停止計時':'沒有麥克風：請用手機碼表自己計時，唱 E4 或 F4'; if(!micOn) tone(nameMidi['E4'],1.5); return; }
+  const [a,b,c]=mode.split('-').map(Number); const phases=[['吸氣',a],['停住',b],['吐「嘶」',c]]; let i=0;
+  (function phase(){ const [name,sec]=phases[i]; const t0=performance.now();
+    (function tick(){ const el=(performance.now()-t0)/1000; const left=Math.max(0,sec-el); $('brText').textContent=name+'  '+Math.ceil(left)+' 秒'; $('brBar').style.width=(el/sec*100)+'%';
+      if(el<sec) brTimer=setTimeout(tick,100); else { i=(i+1)%3; if(i===0){brCycles++;$('brCount').textContent=brCycles;} brTimer=setTimeout(phase,200); } })();
+  })();
+}
+$('brStart').addEventListener('click',brRun); $('brStop').addEventListener('click',brStop);
+function toneDetect(d,now){ if($('brMode').value!=='tone') return; if(d){ if(!toneStart) toneStart=now; toneCur=(now-toneStart)/1000; $('brTone').textContent=toneCur.toFixed(1)+'s'; $('brText').textContent='唱著 '+midiName(d.midi)+'…'; $('brBar').style.width=Math.min(100,toneCur/30*100)+'%'; } else if(toneStart){ toneStart=null; if(toneCur>toneBest){toneBest=toneCur;LS.set('toneBest',toneBest);$('brToneBest').textContent=toneBest.toFixed(1)+'s'} } }
+
+/* ---------- plan ---------- */
+const STAGES=[
+ {t:'階段 1・第 1–3 週',g:'目標：F4 以下全曲不累，建立音準與穩定度',s:[['十年','陳奕迅','F4'],['稻香','周杰倫','E4'],['吻別','張學友','約 G4'],['好久不見','陳奕迅','約 E4'],['不遺憾','李榮浩','低音域']]},
+ {t:'階段 2・第 4–6 週',g:'目標：E4–F4 密集段落不擠；真假音入門',s:[['信仰','張信哲','G4'],['凍結','林俊傑','G4'],['說謊','林宥嘉','—'],['童話（先降 2 key）','光良','G4／轉調後更高'],['夜空中最亮的星','逃跑計劃','真假音入門'],['愛愛愛','方大同','轉音入門']]},
+ {t:'階段 3・第 7–10 週',g:'目標：G4 能連續咬字、能拖長',s:[['江南','林俊傑','G4'],['你是我的眼','林宥嘉','G4'],['安靜','周杰倫','持續 G4'],['演員','薛之謙','約 G4'],['老男孩','筷子兄弟','G4 長音'],['一首簡單的歌','王力宏','真假聲切換'],['聖誕結','陳奕迅','弱混'],['下沙','游鴻明','情感'],['成全','林宥嘉','情感']]},
+ {t:'階段 4・第 11–16 週',g:'目標：G♯4 連續咬字不破',s:[['突然好想你','五月天','G♯4'],['倔強','五月天','G♯4'],['告白氣球','周杰倫','G♯4'],['說好的幸福呢','周杰倫','連續 G♯4'],['意外','薛之謙','G♯4'],['唯一','王力宏','G♯4／A♯4'],['情非得已','庾澄慶','真假聲轉換'],['特別的愛給特別的你','伍思凱','假聲長音']]},
+ {t:'階段 5・進階挑戰',g:'一律先降 2–3 key 唱穩，再每 1–2 週升回半音；唱完喉嚨痛就退回',s:[['晴天','周杰倫','A4'],['翅膀','林俊傑','G♯4–A♯4'],['楓','周杰倫','A♯4／假聲 C♯5'],['擱淺','周杰倫','C♯5'],['她說','林俊傑','A4／假音 B4'],['浮誇','陳奕迅','E5 假聲']]},
+];
+let plan=LS.get('plan',{}); const stagesEl=$('stages');
+function renderPlan(){
+  stagesEl.innerHTML='';
+  STAGES.forEach((st,si)=>{
+    const det=document.createElement('details'); det.className='stage'; const done=st.s.filter((_,i)=>plan[si+'-'+i]&&plan[si+'-'+i].done).length;
+    det.open=LS.get('open',0)===si;
+    det.innerHTML='<summary><span>'+st.t+'</span><span class="prog">'+done+'/'+st.s.length+'</span></summary><div class="goal">'+st.g+'</div>';
+    det.addEventListener('toggle',()=>{if(det.open)LS.set('open',si)});
+    st.s.forEach((song,i)=>{
+      const id=si+'-'+i; const rec=plan[id]||{done:false,key:0};
+      const row=document.createElement('div'); row.className='song'+(rec.done?' done':'');
+      row.innerHTML='<input type="checkbox" id="chk_'+id+'" '+(rec.done?'checked':'')+'><div class="t"><b>'+song[0]+'</b><small>'+song[1]+'・最高音 '+song[2]+'</small></div><div class="k"><button aria-label="降 key">−</button><span>'+(rec.key>0?'+':'')+rec.key+'</span><button aria-label="升 key">+</button></div>';
+      row.querySelector('input').addEventListener('change',e=>{rec.done=e.target.checked;plan[id]=rec;LS.set('plan',plan);renderPlan()});
+      const [dn,up]=row.querySelectorAll('.k button');
+      dn.addEventListener('click',()=>{rec.key=Math.max(-6,rec.key-1);plan[id]=rec;LS.set('plan',plan);renderPlan()});
+      up.addEventListener('click',()=>{rec.key=Math.min(6,rec.key+1);plan[id]=rec;LS.set('plan',plan);renderPlan()});
+      det.appendChild(row);
+    });
+    stagesEl.appendChild(det);
+  });
+}
+renderPlan();
+})();
+</script>
+</body></html>
