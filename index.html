@@ -96,6 +96,9 @@ td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:
 .song.done .t b{color:var(--muted);text-decoration:line-through}
 .log{font-family:var(--font-mono);font-size:.8rem;color:var(--muted);max-height:120px;overflow:auto}
 .notice{border-left:3px solid var(--warn);padding:8px 12px;background:var(--meter);border-radius:0 8px 8px 0;font-size:.85rem}
+.vol{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:.88rem}
+.vol input[type=range]{flex:1 1 140px;min-width:0;accent-color:var(--accent)}
+.vol output{font-family:var(--font-mono);font-variant-numeric:tabular-nums;min-width:3.5em}
 .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;background:var(--meter);color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -115,6 +118,14 @@ td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:
   <button role="tab" data-tab="plan">歌單進度</button>
 </nav>
 
+<div class="vol">
+  <label for="vol">參考音音量</label>
+  <input type="range" id="vol" min="50" max="300" step="10" value="200">
+  <output id="volV" for="vol">200%</output>
+  <label class="hint">音色 <select id="wave"><option value="rich">飽滿（手機推薦）</option><option value="triangle">清亮</option><option value="sine">柔和</option></select></label>
+  <button class="b" id="volTest">試聽</button>
+</div>
+
 <div id="micNotice" class="notice" hidden></div>
 
 <!-- 音準 -->
@@ -124,7 +135,6 @@ td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:
   <div class="row">
     <button class="b primary" id="micBtn">啟動麥克風</button>
     <button class="b" id="playRef">▶ 播放參考音</button>
-    <label class="hint">音色 <select id="wave"><option value="sine">柔和</option><option value="triangle">清亮</option></select></label>
   </div>
   <div class="stepper">
     <button class="b" id="tDown" aria-label="降半音">◀</button>
@@ -272,22 +282,45 @@ tabs.addEventListener('click',e=>{const b=e.target.closest('button');if(b)showTa
 const startTab=(location.hash||'').slice(1); showTab(['pitch','rand','range','high','breath','plan'].includes(startTab)?startTab:LS.get('tab','pitch'));
 
 /* ---------- audio out ---------- */
-let ctx=null;
-function ac(){ if(!ctx) ctx=new (window.AudioContext||window.webkitAudioContext)(); if(ctx.state==='suspended') ctx.resume(); return ctx; }
+let ctx=null, master=null, richWave=null;
+// iPhone: 'playback' lets tones play even with the silent switch on; switched to 'play-and-record' when the mic starts.
+function setSession(type){ try{ if(navigator.audioSession) navigator.audioSession.type=type; }catch(e){} }
+setSession('playback');
+function ac(){
+  if(!ctx){
+    ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const comp=ctx.createDynamicsCompressor();
+    comp.threshold.value=-12; comp.knee.value=6; comp.ratio.value=12; comp.attack.value=.003; comp.release.value=.15;
+    master=ctx.createGain(); master.gain.value=volume/100;
+    master.connect(comp).connect(ctx.destination);
+    // Harmonics make low notes audible on small phone speakers.
+    const imag=new Float32Array([0,1,.75,.55,.4,.28,.18,.12,.08,.05]);
+    richWave=ctx.createPeriodicWave(new Float32Array(imag.length),imag);
+  }
+  if(ctx.state==='suspended') ctx.resume();
+  return ctx;
+}
+let volume=LS.get('vol',200);
+const volEl=$('vol'); volEl.value=volume; $('volV').textContent=volume+'%';
+volEl.addEventListener('input',()=>{ volume=+volEl.value; $('volV').textContent=volume+'%'; LS.set('vol',volume); if(master) master.gain.value=volume/100; });
+const waveEl=$('wave'); waveEl.value=LS.get('wave','rich'); waveEl.addEventListener('change',()=>LS.set('wave',waveEl.value));
+$('volTest').addEventListener('click',()=>tone(nameMidi['E4'],1));
+function setWave(o,w){ w=w||waveEl.value; if(w==='rich') o.setPeriodicWave(richWave); else o.type=w; }
+const PEAK={rich:.45,triangle:.55,sine:.7};
 let playing=[];
 function tone(midi,dur,at,wave){
   const c=ac(); const o=c.createOscillator(); const g=c.createGain();
-  o.type=wave||$('wave').value; o.frequency.value=midiFreq(midi);
-  const t=c.currentTime+(at||0);
-  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.25,t+.03); g.gain.setValueAtTime(.25,t+dur-.06); g.gain.linearRampToValueAtTime(0,t+dur);
-  o.connect(g).connect(c.destination); o.start(t); o.stop(t+dur+.02); playing.push(o); return o;
+  setWave(o,wave); o.frequency.value=midiFreq(midi);
+  const p=PEAK[wave||waveEl.value]||.5, t=c.currentTime+(at||0);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(p,t+.02); g.gain.setValueAtTime(p,t+dur-.06); g.gain.linearRampToValueAtTime(0,t+dur);
+  o.connect(g).connect(master); o.start(t); o.stop(t+dur+.02); playing.push(o); return o;
 }
 function glide(m1,m2,dur,at){
-  const c=ac(); const o=c.createOscillator(); const g=c.createGain(); o.type=$('wave').value;
-  const t=c.currentTime+(at||0);
+  const c=ac(); const o=c.createOscillator(); const g=c.createGain(); setWave(o);
+  const p=PEAK[waveEl.value]||.5, t=c.currentTime+(at||0);
   o.frequency.setValueAtTime(midiFreq(m1),t); o.frequency.exponentialRampToValueAtTime(midiFreq(m2),t+dur);
-  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.25,t+.04); g.gain.setValueAtTime(.25,t+dur-.06); g.gain.linearRampToValueAtTime(0,t+dur);
-  o.connect(g).connect(c.destination); o.start(t); o.stop(t+dur+.02); playing.push(o);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(p,t+.04); g.gain.setValueAtTime(p,t+dur-.06); g.gain.linearRampToValueAtTime(0,t+dur);
+  o.connect(g).connect(master); o.start(t); o.stop(t+dur+.02); playing.push(o);
 }
 function stopAll(){ playing.forEach(o=>{try{o.stop()}catch(e){}}); playing=[]; }
 
@@ -299,6 +332,7 @@ function setMic(on,text){ micOn=on; $('micState').classList.toggle('on',on); $('
 async function startMic(){
   try{
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw new Error('nomd');
+    setSession('play-and-record');
     const s=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     const c=ac(); const src=c.createMediaStreamSource(s); analyser=c.createAnalyser(); analyser.fftSize=2048; buf=new Float32Array(analyser.fftSize); src.connect(analyser);
     setMic(true,'偵測中'); $('micBtn').textContent='麥克風已啟動'; $('micBtn').disabled=true; micNotice.hidden=true; loop();
