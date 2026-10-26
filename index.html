@@ -29,6 +29,15 @@
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{font:inherit;font-family:var(--font-mono);font-size:.8rem;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
 .chip.active{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.drill{border:1px dashed var(--bad);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.drill-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.drill-head b{font-size:.92rem}
+.drill .chip{display:inline-flex;align-items:center;gap:6px}
+.drill .chip .dir{font-size:.72rem;opacity:.8}
+.drill .chip .x{font-size:.9rem;line-height:1;padding:0 2px;opacity:.6}
+.drill .chip .x:hover{opacity:1}
+.b.sm{padding:5px 10px;font-size:.8rem}
+.drill-msg{color:var(--good);font-weight:600;font-size:.88rem;min-height:1.3em}
 .center{text-align:center;font-weight:600;min-height:1.6em}
 .tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.78rem;font-weight:600}
 .tag.good{color:var(--good);background:color-mix(in srgb,var(--good) 15%,transparent)}
@@ -142,6 +151,15 @@ td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:
     <button class="b" id="tUp" aria-label="升半音">▶</button>
   </div>
   <div class="chips" id="quick" aria-label="常用目標音"></div>
+  <div class="drill" id="drillBox" hidden>
+    <div class="drill-head">
+      <b>要加強的音（來自隨機測試）</b>
+      <span class="row"><button class="b sm" id="drillNext">練下一個</button><button class="b sm" id="drillClear">清空</button></span>
+    </div>
+    <div class="chips" id="drillList"></div>
+    <p class="hint">點一個音開始練，穩定唱準 3 秒就會自動移出清單。↑ 表示上次偏高，↓ 表示偏低，×2 是被測出不準的次數。</p>
+    <p class="drill-msg" id="drillMsg"></p>
+  </div>
   <div class="big" id="detNote">—<small id="detFreq">唱出聲音後顯示偵測到的音</small></div>
   <div class="gauge"><div class="zone"></div><div class="mid"></div><div class="needle" id="needle"></div><span class="lab l">−50¢ 偏低</span><span class="lab r">偏高 +50¢</span></div>
   <div class="stat">
@@ -371,14 +389,48 @@ let hold=0,best=0,lastT=0,devs=[];
 let target=LS.get('target',nameMidi['E4']);
 const quick=$('quick');
 ['C3','G3','C4','E4','F4','G4','G♯4','A4'].forEach(n=>{const b=document.createElement('button');b.className='chip';b.textContent=n;b.dataset.m=nameMidi[n];quick.appendChild(b)});
+/* drill list: notes the random test found off by more than 50 cents */
+let drill=LS.get('drill',{}); // {midi:{miss,c}}
+let drillPassed=false;
+function saveDrill(){ LS.set('drill',drill); }
+function renderDrill(){
+  const ms=Object.keys(drill).map(Number).sort((a,b)=>a-b);
+  $('drillBox').hidden=!ms.length;
+  const list=$('drillList'); list.innerHTML='';
+  ms.forEach(m=>{
+    const d=drill[m]; const b=document.createElement('button'); b.className='chip'+(m===target?' active':''); b.dataset.m=m;
+    const dir=d.c>0?'↑':'↓';
+    b.innerHTML=midiName(m)+'<span class="dir">'+dir+(d.miss>1?' ×'+d.miss:'')+'</span><span class="x" data-x="'+m+'" aria-label="移除">×</span>';
+    list.appendChild(b);
+  });
+}
+function addDrill(m,c){ const d=drill[m]||{miss:0,c:0}; d.miss++; d.c=c; drill[m]=d; saveDrill(); }
 function setTarget(m){
   target=Math.max(TLO,Math.min(THI,m));
   $('tName').textContent=midiName(target); $('tHz').textContent=midiFreq(target).toFixed(1)+' Hz';
   quick.querySelectorAll('button').forEach(b=>b.classList.toggle('active',+b.dataset.m===target));
-  best=0; devs=[]; LS.set('target',target);
+  best=0; devs=[]; drillPassed=false; LS.set('target',target); renderDrill();
 }
 setTarget(target);
 quick.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;setTarget(+b.dataset.m);tone(target,1.2)});
+$('drillList').addEventListener('click',e=>{
+  const x=e.target.closest('[data-x]');
+  if(x){ delete drill[+x.dataset.x]; saveDrill(); renderDrill(); return; }
+  const b=e.target.closest('button'); if(!b) return;
+  setTarget(+b.dataset.m); $('drillMsg').textContent=''; tone(target,1.2);
+});
+$('drillNext').addEventListener('click',()=>{
+  const ms=Object.keys(drill).map(Number).sort((a,b)=>a-b); if(!ms.length) return;
+  const nx=ms.find(m=>m>target); setTarget(nx!==undefined?nx:ms[0]); $('drillMsg').textContent=''; tone(target,1.2);
+});
+$('drillClear').addEventListener('click',()=>{ drill={}; saveDrill(); renderDrill(); });
+function drillCheck(){
+  if(drillPassed||hold<3||!drill[target]) return;
+  drillPassed=true; delete drill[target]; saveDrill();
+  $('drillMsg').textContent=midiName(target)+' 唱準了，已移出清單！'+(Object.keys(drill).length?' 按「練下一個」繼續。':' 清單全部完成。');
+  renderDrill();
+  if(!Object.keys(drill).length){ $('drillBox').hidden=false; }
+}
 $('tDown').addEventListener('click',()=>{setTarget(target-1);tone(target,1)});
 $('tUp').addEventListener('click',()=>{setTarget(target+1);tone(target,1)});
 $('playRef').addEventListener('click',()=>tone(target,1.5));
@@ -389,7 +441,7 @@ function onDetect(d){
   const diff=(d.midi-target)*100+d.cents; const clamped=Math.max(-50,Math.min(50,diff));
   $('needle').style.left=(50+clamped)+'%'; const ok=Math.abs(diff)<=20; $('needle').className='needle '+(ok?'ok':(Math.abs(diff)>50?'off':''));
   const dt=(now-lastT)/1000; lastT=now;
-  if(ok){ hold+=dt; best=Math.max(best,hold); devs.push(Math.abs(diff)); if(devs.length>200)devs.shift(); } else hold=0;
+  if(ok){ hold+=dt; best=Math.max(best,hold); devs.push(Math.abs(diff)); if(devs.length>200)devs.shift(); if(!$('drillBox').closest('[data-panel]').hidden) drillCheck(); } else hold=0;
   $('stHold').textContent=hold.toFixed(1)+'s'; $('stBest').textContent=best.toFixed(1)+'s';
   if(devs.length) $('stAvg').textContent=Math.round(devs.reduce((a,b)=>a+b,0)/devs.length)+'¢';
   rangeDetect(d); toneDetect(d,now); exDetect(d); rtDetect(d);
@@ -445,8 +497,10 @@ function rtFinish(){
   const bias=cs.length?Math.round(cs.reduce((a,b)=>a+b,0)/cs.length):null;
   $('rtScore').textContent=score; $('rtOk').textContent=ok+' / '+res.length; $('rtBias').textContent=bias===null?'—':(bias>0?'+':'')+bias+'¢';
   let tip=bias===null?'整輪都沒偵測到聲音，確認麥克風權限，並離手機近一點唱。':bias<-15?'整體偏低：常見於氣息不夠或喉嚨壓著，起音時想像聲音往上、往前送。':bias>15?'整體偏高：可能太用力或緊張，放鬆下巴、音量小一點再唱。':'整體沒有系統性偏高或偏低，繼續練不準的那幾個音。';
-  const weak=[...new Set(res.filter(r=>r.cls!=='good').map(r=>midiName(r.m)))];
-  if(weak.length&&bias!==null) tip+=' 要加強：'+weak.join('、')+'，可以到「音準」分頁單獨練。';
+  const off=res.filter(r=>r.c!==null&&Math.abs(r.c)>50);
+  off.forEach(r=>addDrill(r.m,r.c)); renderDrill();
+  const weak=[...new Set(off.map(r=>midiName(r.m)))];
+  if(weak.length) tip+=' 偏太多的音（'+weak.join('、')+'）已加入「音準」分頁的要加強清單。';
   $('rtTip').textContent=tip; $('rtSum').hidden=false; $('rtStatus').textContent='測驗完成'; $('rtBar').style.width='0%';
   const b=LS.get('rtBest',0); if(score>b) LS.set('rtBest',score); $('rtBestV').textContent=Math.max(score,b);
   rt=null;
