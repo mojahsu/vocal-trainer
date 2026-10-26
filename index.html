@@ -114,7 +114,7 @@ td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:
 
 <div class="wrap">
 <header>
-  <div><h1>男聲練唱室</h1><div class="sub">中階男聲・音準、音域、高音、氣息、歌單進度</div></div>
+  <div><h1>男聲練唱室</h1><div class="sub">中階男聲・音準、音域、高音、氣息、歌單進度・版本 5（10/27）</div></div>
   <span class="mic" id="micState"><span class="dot"></span><span id="micText">麥克風：未啟動</span></span>
 </header>
 
@@ -151,11 +151,12 @@ td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:
     <button class="b" id="tUp" aria-label="升半音">▶</button>
   </div>
   <div class="chips" id="quick" aria-label="常用目標音"></div>
-  <div class="drill" id="drillBox" hidden>
+  <div class="drill" id="drillBox">
     <div class="drill-head">
       <b>要加強的音（來自隨機測試）</b>
       <span class="row"><button class="b sm" id="drillNext">練下一個</button><button class="b sm" id="drillClear">清空</button></span>
     </div>
+    <p class="hint" id="drillEmpty">目前沒有要加強的音。做完「隨機測試」後，偏差超過 50 音分的音會自動出現在這裡；結果表上也可以按「加入」手動加進來。</p>
     <div class="chips" id="drillList"></div>
     <p class="hint">點一個音開始練，穩定唱準 3 秒就會自動移出清單。↑ 表示上次偏高，↓ 表示偏低，×2 是被測出不準的次數。</p>
     <p class="drill-msg" id="drillMsg"></p>
@@ -189,7 +190,7 @@ td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:
     <div><b id="rtBestV">—</b><span>最高分紀錄</span></div>
   </div>
   <p class="hint" id="rtTip"></p>
-  <div style="overflow-x:auto"><table><thead><tr><th>#</th><th>目標</th><th>偏差</th><th>結果</th></tr></thead><tbody id="rtRes"></tbody></table></div>
+  <div style="overflow-x:auto"><table><thead><tr><th>#</th><th>目標</th><th>偏差</th><th>結果</th><th></th></tr></thead><tbody id="rtRes"></tbody></table></div>
 </section>
 
 <!-- 音域 -->
@@ -395,7 +396,7 @@ let drillPassed=false;
 function saveDrill(){ LS.set('drill',drill); }
 function renderDrill(){
   const ms=Object.keys(drill).map(Number).sort((a,b)=>a-b);
-  $('drillBox').hidden=!ms.length;
+  $('drillEmpty').hidden=!!ms.length; $('drillNext').hidden=$('drillClear').hidden=!ms.length;
   const list=$('drillList'); list.innerHTML='';
   ms.forEach(m=>{
     const d=drill[m]; const b=document.createElement('button'); b.className='chip'+(m===target?' active':''); b.dataset.m=m;
@@ -429,7 +430,6 @@ function drillCheck(){
   drillPassed=true; delete drill[target]; saveDrill();
   $('drillMsg').textContent=midiName(target)+' 唱準了，已移出清單！'+(Object.keys(drill).length?' 按「練下一個」繼續。':' 清單全部完成。');
   renderDrill();
-  if(!Object.keys(drill).length){ $('drillBox').hidden=false; }
 }
 $('tDown').addEventListener('click',()=>{setTarget(target-1);tone(target,1)});
 $('tUp').addEventListener('click',()=>{setTarget(target+1);tone(target,1)});
@@ -487,7 +487,7 @@ function rtScore(){
   $('rtTarget').textContent=midiName(m);
   $('rtStatus').textContent=r.c===null?'沒偵測到聲音':(r.label+'  '+(r.c>0?'+':'')+r.c+'¢'+r.oct);
   const tr=document.createElement('tr');
-  tr.innerHTML='<td class="n">'+(rt.i+1)+'</td><td class="n">'+midiName(m)+'</td><td class="n">'+(r.c===null?'—':(r.c>0?'+':'')+r.c+'¢')+'</td><td><span class="tag '+r.cls+'">'+r.label+'</span>'+r.oct+'</td>';
+  tr.innerHTML='<td class="n">'+(rt.i+1)+'</td><td class="n">'+midiName(m)+'</td><td class="n">'+(r.c===null?'—':(r.c>0?'+':'')+r.c+'¢')+'</td><td><span class="tag '+r.cls+'">'+r.label+'</span>'+r.oct+'</td><td><button class="b sm" data-add="'+m+'" data-c="'+(r.c===null?0:r.c)+'">加入</button></td>';
   $('rtRes').appendChild(tr);
   rtTimer=setTimeout(rtNext,1300);
 }
@@ -499,6 +499,7 @@ function rtFinish(){
   let tip=bias===null?'整輪都沒偵測到聲音，確認麥克風權限，並離手機近一點唱。':bias<-15?'整體偏低：常見於氣息不夠或喉嚨壓著，起音時想像聲音往上、往前送。':bias>15?'整體偏高：可能太用力或緊張，放鬆下巴、音量小一點再唱。':'整體沒有系統性偏高或偏低，繼續練不準的那幾個音。';
   const off=res.filter(r=>r.c!==null&&Math.abs(r.c)>50);
   off.forEach(r=>addDrill(r.m,r.c)); renderDrill();
+  $('rtRes').querySelectorAll('[data-add]').forEach(b=>{ if(drill[+b.dataset.add]){ b.textContent='已加入'; b.disabled=true; } });
   const weak=[...new Set(off.map(r=>midiName(r.m)))];
   if(weak.length) tip+=' 偏太多的音（'+weak.join('、')+'）已加入「音準」分頁的要加強清單。';
   $('rtTip').textContent=tip; $('rtSum').hidden=false; $('rtStatus').textContent='測驗完成'; $('rtBar').style.width='0%';
@@ -506,6 +507,12 @@ function rtFinish(){
   rt=null;
 }
 $('rtGo').addEventListener('click',rtStart);
+$('rtRes').addEventListener('click',e=>{
+  const b=e.target.closest('[data-add]'); if(!b) return;
+  const m=+b.dataset.add;
+  if(!drill[m]) addDrill(m,+b.dataset.c);
+  renderDrill(); b.textContent='已加入'; b.disabled=true;
+});
 $('rtStop').addEventListener('click',()=>{ clearTimeout(rtTimer); stopAll(); rt=null; $('rtStatus').textContent='已停止'; $('rtBar').style.width='0%'; });
 
 /* ---------- range panel ---------- */
