@@ -108,19 +108,36 @@ td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:
 .vol{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:.88rem}
 .vol input[type=range]{flex:1 1 140px;min-width:0;accent-color:var(--accent)}
 .vol output{font-family:var(--font-mono);font-variant-numeric:tabular-nums;min-width:3.5em}
+.sg-strip{display:flex;flex-wrap:wrap;gap:6px}
+.sgn{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;padding:6px 6px 5px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer;font:inherit}
+.sgn b{font-size:1.15rem;font-weight:600;line-height:1.2}
+.sgn small{font-family:var(--font-mono);font-size:.68rem;color:var(--muted)}
+.sgn.cont b{color:var(--muted)}
+.sgn.ok{background:color-mix(in srgb,var(--good) 18%,var(--panel));border-color:var(--good)}
+.sgn.cur{outline:2px solid var(--accent);outline-offset:1px}
+.sgn.play{background:color-mix(in srgb,var(--accent) 28%,var(--panel))}
+.sg-cur{display:flex;align-items:center;justify-content:center;gap:22px}
+.sg-ch{font-family:var(--font-display);font-size:3.6rem;line-height:1;text-align:center}
+.sg-ch small{display:block;font-family:var(--font-body);font-size:.8rem;color:var(--muted);margin-top:4px;min-height:1.2em}
+.sg-note{font-family:var(--font-mono);display:flex;flex-direction:column}
+.sg-note b{font-size:1.8rem;line-height:1.1}
+.sg-note small{color:var(--muted);font-size:.8rem}
+textarea,input[type=text]{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+code{font-family:var(--font-mono);font-size:.85em;background:var(--meter);padding:1px 5px;border-radius:4px}
 .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;background:var(--meter);color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
 <div class="wrap">
 <header>
-  <div><h1>男聲練唱室</h1><div class="sub">中階男聲・音準、音域、高音、氣息、歌單進度・版本 5（10/27）</div></div>
+  <div><h1>男聲練唱室</h1><div class="sub">中階男聲・音準、音域、高音、氣息、歌單進度・版本 6（10/28）</div></div>
   <span class="mic" id="micState"><span class="dot"></span><span id="micText">麥克風：未啟動</span></span>
 </header>
 
 <nav role="tablist" id="tabs">
   <button role="tab" data-tab="pitch" aria-selected="true">音準</button>
   <button role="tab" data-tab="rand">隨機測試</button>
+  <button role="tab" data-tab="song">逐字練唱</button>
   <button role="tab" data-tab="range">音域測試</button>
   <button role="tab" data-tab="high">高音階梯</button>
   <button role="tab" data-tab="breath">氣息</button>
@@ -191,6 +208,57 @@ td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:
   </div>
   <p class="hint" id="rtTip"></p>
   <div style="overflow-x:auto"><table><thead><tr><th>#</th><th>目標</th><th>偏差</th><th>結果</th><th></th></tr></thead><tbody id="rtRes"></tbody></table></div>
+</section>
+
+<!-- 逐字練唱 -->
+<section class="panel" data-panel="song" hidden>
+  <h2>逐字練唱</h2>
+  <p class="hint">把你的曲譜（字＋音名）匯入，一個字一個字練：先聽參考音，唱準 0.6 秒就自動跳下一個字。播參考音時不會偵測，戴耳機效果最好。</p>
+  <div class="row">
+    <label class="hint" id="sgSelWrap">曲目 <select id="sgSel"></select></label>
+    <button class="b sm" id="sgDel">刪除這首</button>
+  </div>
+  <div id="sgEmpty" class="notice">還沒有曲目。打開你的 Google 文件，全選複製，貼到下面的「匯入曲譜」再按「解析並儲存」。曲譜只存在這台裝置的瀏覽器裡。</div>
+  <div id="sgMain" style="display:flex;flex-direction:column;gap:14px">
+    <div class="row" style="justify-content:space-between">
+      <button class="b sm" id="sgPrevLine">◀ 上一句</button>
+      <span id="sgLineNo" class="pill">第 1 / 1 句</span>
+      <button class="b sm" id="sgNextLine">下一句 ▶</button>
+    </div>
+    <div class="sg-strip" id="sgStrip"></div>
+    <div class="sg-cur">
+      <div class="sg-ch"><span id="sgCh">—</span><small id="sgChHint"></small></div>
+      <div class="sg-note"><b id="sgNote">—</b><small id="sgHz"></small></div>
+    </div>
+    <div class="gauge"><div class="zone"></div><div class="mid"></div><div class="needle" id="sgNeedle"></div><span class="lab l">−50¢ 偏低</span><span class="lab r">偏高 +50¢</span></div>
+    <p class="center" id="sgStatus"></p>
+    <div class="row">
+      <button class="b" id="sgPrev">◀ 上一字</button>
+      <button class="b primary" id="sgPlay">▶ 參考音</button>
+      <button class="b" id="sgNext">下一字 ▶</button>
+      <button class="b" id="sgDemo">整句示範</button>
+    </div>
+    <div class="row">
+      <label class="hint"><input type="checkbox" id="sgAuto" checked> 唱準自動下一字</label>
+      <label class="hint"><input type="checkbox" id="sgAutoPlay" checked> 每個字先播參考音</label>
+      <span class="hint">移調 <button class="b sm" id="sgDown" aria-label="降半音">−</button> <span id="sgShift">0</span> <button class="b sm" id="sgUp" aria-label="升半音">＋</button></span>
+    </div>
+    <div class="stat">
+      <div><b id="sgLineProg">0/0</b><span>本句唱準</span></div>
+      <div><b id="sgAllProg">0/0</b><span>全曲唱準</span></div>
+      <div><b id="sgDev">—</b><span>目前偏差</span></div>
+    </div>
+    <div class="row"><button class="b sm" id="sgReset">重設這首進度</button></div>
+  </div>
+  <details class="stage" id="sgImport">
+    <summary><span>匯入曲譜</span></summary>
+    <div style="padding:0 14px 14px;display:flex;flex-direction:column;gap:10px">
+      <p class="hint">支援兩種格式：① 直接從 Google 文件複製的表格（第一列是字、「音名」那列是音）；② 每行一句，用「字 音名」配對，例如 <code>我 E4 愛 G♯4 你 F♯4</code>。音名寫 G#3、G3#、G♯3 都可以。字格空白的音，會當成前一個字的拖音。</p>
+      <input type="text" id="sgName" placeholder="曲名">
+      <textarea id="sgText" rows="8" placeholder="在這裡貼上曲譜"></textarea>
+      <div class="row"><button class="b primary" id="sgParse">解析並儲存</button><span class="hint" id="sgParseMsg"></span></div>
+    </div>
+  </details>
 </section>
 
 <!-- 音域 -->
@@ -298,7 +366,7 @@ function showTab(name){
   LS.set('tab',name);
 }
 tabs.addEventListener('click',e=>{const b=e.target.closest('button');if(b)showTab(b.dataset.tab)});
-const startTab=(location.hash||'').slice(1); showTab(['pitch','rand','range','high','breath','plan'].includes(startTab)?startTab:LS.get('tab','pitch'));
+const startTab=(location.hash||'').slice(1); showTab(['pitch','rand','song','range','high','breath','plan'].includes(startTab)?startTab:LS.get('tab','pitch'));
 
 /* ---------- audio out ---------- */
 let ctx=null, master=null, richWave=null;
@@ -436,7 +504,7 @@ $('tUp').addEventListener('click',()=>{setTarget(target+1);tone(target,1)});
 $('playRef').addEventListener('click',()=>tone(target,1.5));
 function onDetect(d){
   const now=performance.now();
-  if(!d){ $('detNote').firstChild.textContent='—'; $('detFreq').textContent='唱出聲音後顯示偵測到的音'; $('needle').style.left='50%'; $('needle').className='needle'; hold=0; $('stHold').textContent='0.0s'; lastT=now; rangeDetect(null); toneDetect(null,now); exDetect(null); rtDetect(null); return; }
+  if(!d){ $('detNote').firstChild.textContent='—'; $('detFreq').textContent='唱出聲音後顯示偵測到的音'; $('needle').style.left='50%'; $('needle').className='needle'; hold=0; $('stHold').textContent='0.0s'; lastT=now; rangeDetect(null); toneDetect(null,now); exDetect(null); rtDetect(null); songDetect(null,now); return; }
   $('detNote').firstChild.textContent=midiName(d.midi); $('detFreq').textContent=d.freq.toFixed(1)+' Hz';
   const diff=(d.midi-target)*100+d.cents; const clamped=Math.max(-50,Math.min(50,diff));
   $('needle').style.left=(50+clamped)+'%'; const ok=Math.abs(diff)<=20; $('needle').className='needle '+(ok?'ok':(Math.abs(diff)>50?'off':''));
@@ -444,8 +512,167 @@ function onDetect(d){
   if(ok){ hold+=dt; best=Math.max(best,hold); devs.push(Math.abs(diff)); if(devs.length>200)devs.shift(); if(!$('drillBox').closest('[data-panel]').hidden) drillCheck(); } else hold=0;
   $('stHold').textContent=hold.toFixed(1)+'s'; $('stBest').textContent=best.toFixed(1)+'s';
   if(devs.length) $('stAvg').textContent=Math.round(devs.reduce((a,b)=>a+b,0)/devs.length)+'¢';
-  rangeDetect(d); toneDetect(d,now); exDetect(d); rtDetect(d);
+  rangeDetect(d); toneDetect(d,now); exDetect(d); rtDetect(d); songDetect(d,now);
 }
+
+/* ---------- song: per-character practice ---------- */
+const NOTE_BASE={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+function parseNote(s){
+  s=String(s||'').replace(/Hz/gi,'').replace(/[\\*\s]/g,'');
+  const m=s.match(/^([A-Ga-g])([#♯b♭]?)(\d)([#♯b♭]?)$/); if(!m) return null;
+  let v=NOTE_BASE[m[1].toUpperCase()]+12*(+m[3]+1); const a=m[2]||m[4];
+  if(a==='#'||a==='♯') v++; else if(a==='b'||a==='♭') v--;
+  return v;
+}
+function splitCells(r){
+  if(r.indexOf('\t')>=0) return r.split('\t');
+  const t=r.trim(); if(!t.startsWith('|')) return null;
+  return t.replace(/^\|/,'').replace(/(?<!\\)\|$/,'').split(/(?<!\\)\|/);
+}
+const cleanCell=c=>c.replace(/\\/g,'').replace(/\*\*/g,'').trim();
+function parseSheet(text){
+  const rows=text.split(/\r?\n/), lines=[]; let header=null, table=false;
+  for(const raw of rows){
+    const cs=splitCells(raw); if(!cs) continue;
+    const cells=cs.map(cleanCell);
+    if(cells.every(c=>c===''||/^:?-{2,}:?$/.test(c))) continue;
+    const first=cells[0];
+    if(/音名/.test(first)){
+      table=true; if(!header) continue;
+      const line=[];
+      for(let i=1;i<cells.length;i++){ const m=parseNote(cells[i]); if(m==null) continue; line.push({ch:(header[i]||'').trim(),m}); }
+      if(line.length) lines.push(line); header=null; continue;
+    }
+    if(/簡譜|頻率/.test(first)) continue;
+    header=cells;
+  }
+  if(table) return lines;
+  for(const raw of rows){
+    const toks=raw.replace(/[\\*|,，、]/g,' ').split(/\s+/).filter(Boolean); const line=[]; let pend='';
+    for(const t of toks){ const m=parseNote(t); if(m!=null){ line.push({ch:pend,m}); pend=''; } else pend=t; }
+    if(line.length) lines.push(line);
+  }
+  return lines;
+}
+$('sgText').addEventListener('paste',e=>{
+  const html=e.clipboardData&&e.clipboardData.getData('text/html');
+  if(!html||html.indexOf('<table')<0) return;
+  e.preventDefault();
+  const doc=new DOMParser().parseFromString(html,'text/html'), out=[];
+  doc.querySelectorAll('table').forEach(t=>{ t.querySelectorAll('tr').forEach(tr=>out.push([...tr.children].map(td=>td.textContent.replace(/\s+/g,' ').trim()).join('\t'))); out.push(''); });
+  $('sgText').value=out.join('\n');
+  $('sgParseMsg').textContent='已貼上 '+doc.querySelectorAll('table').length+' 個表格，按「解析並儲存」。';
+});
+let songs=LS.get('songs',[]), sgCur=LS.get('songCur',null), sg=null, sgP=null;
+let sgHold=0, sgLast=0, sgPassed=false, refUntil=0, sgAdvTimer=null, sgDemoTimer=null, sgMsgTimer=null;
+const sgSave=()=>LS.set('songs',songs);
+const sgSaveP=()=>{ if(sg) LS.set('songProg_'+sg.id,sgP); };
+function sgRenderSel(){ const sel=$('sgSel'); sel.innerHTML=''; songs.forEach(x=>{const o=document.createElement('option');o.value=x.id;o.textContent=x.name;sel.appendChild(o)}); if(sg) sel.value=sg.id; }
+function sgLoad(id){
+  sg=songs.find(x=>x.id===id)||songs[0]||null; sgCur=sg?sg.id:null; LS.set('songCur',sgCur);
+  $('sgEmpty').hidden=!!sg; $('sgMain').hidden=!sg; $('sgDel').hidden=!sg; $('sgSelWrap').hidden=!sg;
+  sgRenderSel();
+  if(!sg){ $('sgImport').open=true; return; }
+  sgP=LS.get('songProg_'+sg.id,null)||{li:0,ni:0,ok:{}};
+  if(sgP.li>=sg.lines.length){ sgP.li=0; sgP.ni=0; }
+  sgRender();
+}
+const sgNote=()=>sg.lines[sgP.li][sgP.ni];
+const sgMidi=n=>n.m+(sg.shift||0);
+function sgChar(li,ni){ const l=sg.lines[li]; for(let j=ni;j>=0;j--){ if(l[j].ch) return l[j].ch; } return '～'; }
+function sgRender(){
+  const line=sg.lines[sgP.li];
+  $('sgLineNo').textContent='第 '+(sgP.li+1)+' / '+sg.lines.length+' 句';
+  const strip=$('sgStrip'); strip.innerHTML='';
+  line.forEach((n,i)=>{
+    const b=document.createElement('button');
+    b.className='sgn'+(i===sgP.ni?' cur':'')+(sgP.ok[sgP.li+'-'+i]?' ok':'')+(n.ch?'':' cont'); b.dataset.i=i;
+    const c=document.createElement('b'); c.textContent=n.ch||'～';
+    const sm=document.createElement('small'); sm.textContent=midiName(sgMidi(n));
+    b.append(c,sm); strip.appendChild(b);
+  });
+  const n=sgNote(), m=sgMidi(n);
+  $('sgCh').textContent=sgChar(sgP.li,sgP.ni); $('sgChHint').textContent=n.ch?'':'拖音';
+  $('sgNote').textContent=midiName(m); $('sgHz').textContent=midiFreq(m).toFixed(1)+' Hz';
+  $('sgShift').textContent=(sg.shift>0?'+':'')+(sg.shift||0);
+  $('sgLineProg').textContent=line.filter((_,i)=>sgP.ok[sgP.li+'-'+i]).length+'/'+line.length;
+  $('sgAllProg').textContent=Object.keys(sgP.ok).length+'/'+sg.lines.reduce((a,l)=>a+l.length,0);
+}
+function sgSay(t){ $('sgStatus').textContent=t; }
+function sgRef(){
+  const m=sgMidi(sgNote()); tone(m,1); refUntil=performance.now()+1150; sgSay('仔細聽…');
+  clearTimeout(sgMsgTimer); sgMsgTimer=setTimeout(()=>sgSay(micOn?'換你唱「'+sgChar(sgP.li,sgP.ni)+'」':'跟著唱「'+sgChar(sgP.li,sgP.ni)+'」（啟動麥克風才會自動評分）'),1150);
+}
+function sgGo(li,ni,play){
+  clearTimeout(sgAdvTimer); sgP.li=li; sgP.ni=ni; sgHold=0; sgPassed=false; sgSaveP(); sgRender(); sgSay('');
+  if(play&&$('sgAutoPlay').checked) sgRef();
+}
+function sgStep(d){
+  let li=sgP.li, ni=sgP.ni+d;
+  if(ni>=sg.lines[li].length){ if(li+1<sg.lines.length){ li++; ni=0; } else { sgSay('已經是最後一個字了'); return; } }
+  if(ni<0){ if(li>0){ li--; ni=sg.lines[li].length-1; } else ni=0; }
+  sgGo(li,ni,true);
+}
+function songDetect(d,now){
+  if(!sg||$('sgMain').hidden||$('sgMain').closest('[data-panel]').hidden){ sgLast=now; return; }
+  const dt=Math.min(.1,(now-(sgLast||now))/1000); sgLast=now;
+  if(!d){ sgHold=0; $('sgNeedle').style.left='50%'; $('sgNeedle').className='needle'; return; }
+  if(now<refUntil) return;
+  const m=sgMidi(sgNote()), diff=(d.midi-m)*100+d.cents, ok=Math.abs(diff)<=25;
+  $('sgNeedle').style.left=(50+Math.max(-50,Math.min(50,diff)))+'%';
+  $('sgNeedle').className='needle '+(ok?'ok':(Math.abs(diff)>50?'off':''));
+  $('sgDev').textContent=(diff>0?'+':'')+Math.round(diff)+'¢';
+  if(ok){
+    sgHold+=dt;
+    if(sgHold>=.6&&!sgPassed){
+      sgPassed=true; sgP.ok[sgP.li+'-'+sgP.ni]=1; sgSaveP(); sgRender(); sgSay('唱準了！');
+      if($('sgAuto').checked) sgAdvTimer=setTimeout(()=>sgStep(1),500);
+    }
+    return;
+  }
+  sgHold=0; if(sgPassed) return;
+  const o=Math.round(diff/1200);
+  if(o!==0&&Math.abs(diff-o*1200)<=50) sgSay(o>0?'高了一個八度，往下唱':'低了一個八度，往上唱');
+  else if(Math.abs(diff)>50) sgSay(diff>0?'偏高，往下一點':'偏低，往上一點');
+  else sgSay('很接近了，穩住');
+}
+$('sgSel').addEventListener('change',e=>sgLoad(e.target.value));
+$('sgStrip').addEventListener('click',e=>{ const b=e.target.closest('.sgn'); if(b) sgGo(sgP.li,+b.dataset.i,true); });
+$('sgPrev').addEventListener('click',()=>sgStep(-1));
+$('sgNext').addEventListener('click',()=>sgStep(1));
+$('sgPlay').addEventListener('click',sgRef);
+$('sgPrevLine').addEventListener('click',()=>{ if(sgP.li>0) sgGo(sgP.li-1,0,true); });
+$('sgNextLine').addEventListener('click',()=>{ if(sgP.li+1<sg.lines.length) sgGo(sgP.li+1,0,true); });
+$('sgDemo').addEventListener('click',()=>{
+  clearTimeout(sgDemoTimer); const line=sg.lines[sgP.li], st=.55;
+  line.forEach((n,i)=>tone(sgMidi(n),st-.04,i*st));
+  refUntil=performance.now()+line.length*st*1000+200; sgSay('整句示範');
+  const bs=$('sgStrip').querySelectorAll('.sgn'); let i=0;
+  (function hl(){ bs.forEach((b,j)=>b.classList.toggle('play',j===i)); i++; if(i<=line.length) sgDemoTimer=setTimeout(hl,st*1000); else sgSay(''); })();
+});
+$('sgDown').addEventListener('click',()=>{ sg.shift=Math.max(-7,(sg.shift||0)-1); sgSave(); sgRender(); });
+$('sgUp').addEventListener('click',()=>{ sg.shift=Math.min(7,(sg.shift||0)+1); sgSave(); sgRender(); });
+$('sgReset').addEventListener('click',()=>{ sgP={li:0,ni:0,ok:{}}; sgSaveP(); sgGo(0,0,false); });
+let sgDelArm=false;
+$('sgDel').addEventListener('click',()=>{
+  const b=$('sgDel');
+  if(!sgDelArm){ sgDelArm=true; b.textContent='再按一次確認刪除'; setTimeout(()=>{ sgDelArm=false; b.textContent='刪除這首'; },3000); return; }
+  try{ localStorage.removeItem('vt_songProg_'+sg.id); }catch(e){}
+  songs=songs.filter(x=>x.id!==sg.id); sgSave(); sgDelArm=false; b.textContent='刪除這首';
+  sgLoad(songs[0]&&songs[0].id);
+});
+$('sgParse').addEventListener('click',()=>{
+  const lines=parseSheet($('sgText').value);
+  if(!lines.length){ $('sgParseMsg').textContent='找不到音名。請確認有「音名」那一列，或用「字 音名」的格式。'; return; }
+  const name=$('sgName').value.trim()||('我的曲目 '+(songs.length+1)), id='s'+Date.now();
+  const total=lines.reduce((a,l)=>a+l.length,0);
+  songs.push({id,name,lines,shift:0}); sgSave();
+  $('sgText').value=''; $('sgName').value=''; $('sgImport').open=false;
+  sgLoad(id);
+  $('sgParseMsg').textContent='已匯入「'+name+'」：'+lines.length+' 句、'+total+' 個音。';
+  sgSay('已匯入 '+lines.length+' 句、'+total+' 個音，從第一個字開始。');
+});
+sgLoad(sgCur);
 
 /* ---------- random pitch test ---------- */
 const rtLo=$('rtLo'),rtHi=$('rtHi');
